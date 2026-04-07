@@ -1,0 +1,12 @@
+@model List<GroceryApp.Data.Entities.GroceryItem>
+@{
+    Layout = null;
+}
+
+ @foreach (var item in Model)
+    {
+        <li>
+            <input type="checkbox" @(item.IsCompleted ? "checked" : "") data-id="@item.Id" class="toggle-item" />
+            <span class="item-name @(item.IsCompleted ? "completed" : "")">@item.Name</span>
+        </li>
+    }

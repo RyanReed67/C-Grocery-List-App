@@ -1,0 +1,139 @@
+
+@{
+    Layout = "_Layout";
+} 
+
+<h1>Grocery List</h1>
+
+<div class="mb-3 mt-3">
+    <div class="input-group">
+        <input type="text" id="newItemName" class="form-control" placeholder="Add a new item...">
+        <button class="btn btn-primary" id="addItemBtn">Add</button>
+        <button id="clearAllBtn" class="btn btn-danger">Clear All Items</button>
+        <button id="addAndCheckBtn" class="btn btn-success">Add & Check</button>
+        <button id="clearCompletedBtn" class="btn btn-warning">Clear Completed</button>
+    </div>
+</div>
+
+<ul id="grocery-list">
+   
+</ul>
+
+<script>
+    // Centralized function to handle adding items with optional "check" parameter
+    function addItem(check = false) {
+        var nameInput = $('#newItemName');
+            var name = nameInput.val();
+        if (name.trim().length > 0) {
+            $.post('/Home/AddItem', { name: name, check: check }, function (response) {
+                if (response.success) {
+                    
+                    loadItems();
+                    $('#newItemName').val('').focus();
+                } else {
+                    console.error('Server logic failed:', response.message);
+                    alert("Oops! The database didn't like that. Error: " + response.message);
+                }
+            })
+            .fail(function (xhr, status, error) {
+                failedRequest(xhr, status, error);
+            });
+        } else {
+            alert("Please enter a name");
+        }
+    }
+
+    // Centralized function to handle AJAX failures for better debugging
+    function failedRequest(xhr, status, error) {
+        console.error('The entire request failed!');
+        console.log('Status:', status);
+        console.log('Error Type:', error);
+        alert("Critical Failure: The server did not respond.");
+    }
+
+    // Centralized function to load items, used after any action that modifies the list
+    function loadItems() {
+        $('#grocery-list').empty();
+        $.get('/Home/GetItems', function (data) {
+            $('#grocery-list').html(data);
+        });
+    }
+
+    // Document ready function to set up event handlers and load initial items
+    $(document).ready(function () {
+
+        // Toggle Logic (Striking through items)
+        $(document).on('change', '.toggle-item', function () {
+            var checkbox = $(this);
+            var id = checkbox.data('id');
+
+            $.post('/Home/ToggleItem', { id: id }, function (response) {
+                if (response.success) {
+                    loadItems();
+                } else {
+                    console.error('Failed to toggle item:', response.message);
+                    alert("Failed to update item. Error: " + response.message);
+                }
+            })
+            .fail(function (xhr, status, error) {
+                failedRequest(xhr, status, error);
+            });
+        });
+
+        // Add Logic (Updated with Error Handling for Debugging)
+        $('#addItemBtn').on('click', function () {
+            addItem(false);
+        });
+
+        // Add & Check Logic (New Button)
+        $('#addAndCheckBtn').on('click', function () {
+            addItem(true);
+        });
+
+        // Enter Key Logic (Triggers the Add button)
+        $('#newItemName').on('keypress', function (e) {
+            if (e.which == 13) { 
+                e.preventDefault(); // Prevents the page from refreshing
+                $('#addItemBtn').click(); 
+            }
+        });
+
+        // Clear All Logic
+        $('#clearAllBtn').on('click', function () {
+            debugger; // Set a breakpoint here to inspect the confirmation flow
+            if (confirm("Are you sure you want to delete everything?")) {
+                $.post('/Home/ClearAll', function (response) {
+                    if (response.success) {
+                        loadItems();
+                    } else {
+                        console.error('Failed to clear items:', response.message);
+                        alert("Failed to clear items. Error: " + response.message);
+                    }
+                })
+                .fail(function (xhr, status, error) {
+                    failedRequest(xhr, status, error);
+                });
+            }
+        });
+
+        // Clear Completed Logic
+        $('#clearCompletedBtn').on('click', function () {
+            if (confirm("Are you sure you want to delete all completed items?")) {
+                $.post('/Home/ClearCompleted', function (response) {
+                    if (response.success) {
+                        loadItems();
+                    } else {
+                        console.error('Failed to clear completed items:', response.message);
+                        alert("Failed to clear completed items. Error: " + response.message);
+                    }
+                })
+                .fail(function (xhr, status, error) {
+                    failedRequest(xhr, status, error);
+                });
+            }
+        });
+
+        // Initial load of items when the page is ready
+        loadItems();
+    });
+</script>
